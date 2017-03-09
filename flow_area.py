@@ -1,11 +1,10 @@
 #-------------------------------------------------------------------------------
-# Name:        IntersectZones.py
+# Name:        flow_area.py
 # Purpose:
 # Author:      Research Planning, Inc.
 #
 # Created:     12/04/2016
 # Copyright:   (c) Research Planning, Inc. 2016
-# Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
 import os, sys, arcpy, traceback, math
@@ -13,7 +12,6 @@ from arcpy import env
 
 
 def find_overlaps(input_features1, input_features2):
-
     for row in arcpy.da.SearchCursor(input_features, ('OID@', 'SHAPE@')):
         for row2 in arcpy.da.SearchCursor(input_features, ('OID@', 'SHAPE@')):
             if row2[1].overlaps(row[1]):
@@ -119,8 +117,8 @@ def make_perpendicular(input_lines, distance, fcname, start):
             firsty2 = endy + firstend[1]
             secondx2 = endx + secondend[0]
             secondy2 = endy + secondend[1]
-            midx = startx
-            midy = starty
+            midx = endx
+            midy = endy
 
         pnt.X, pnt.Y = firstx2 , firsty2
         array.add(pnt)
