@@ -112,13 +112,19 @@ def make_perpendicular(input_lines, distance, fcname, start):
             firsty2 = starty + firstend[1]
             secondx2 = startx + secondend[0]
             secondy2 = starty + secondend[1]
+            midx = startx
+            midy = starty
         else:
             firstx2 = endx + firstend[0]
             firsty2 = endy + firstend[1]
             secondx2 = endx + secondend[0]
             secondy2 = endy + secondend[1]
+            midx = startx
+            midy = starty
 
         pnt.X, pnt.Y = firstx2 , firsty2
+        array.add(pnt)
+        pnt.X, pnt.Y = midx , midy
         array.add(pnt)
         pnt.X, pnt.Y = secondx2 , secondy2
         array.add(pnt)
@@ -156,16 +162,16 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.AddMessage("Making downstream perpendicular cutlines...")
         make_perpendicular(input_flow_lines, 500, "TEST_swpt_cutline_dwnstrm", False)
 
-        # Crack open water polygons with cutlines and trim with "WITHIN" reselect
+        # Crack NHD open water polygons with cutlines and trim with "WITHIN" reselect
         ## To Do
         ## arcpy.SelectLayerByLocation_management(in_layer=input_nhd_area_polys, overlap_type="CONTAINS", select_features=input_flow_lines, search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         ## arcpy.CopyFeatures_management(input_nhd_area_polys, "swpt_ndhar6mi_fl")
 
-        # Identify polygons containing flowlines from multiple DWUNIQUE values, or flowlines from one or more DWUNIQUE values and a non-upstream-downstream flowline
-        ## this select shoudl take place with the cutline-trimmed version
+        # Identify NHD open water polygons containing flowlines from multiple DWUNIQUE values, or flowlines from one or more DWUNIQUE values and a non-upstream-downstream flowline
+        ## this select should take place with the cutline-trimmed version
 
         ## NEED TO ADD some stuff here to only select correct polygons...  currently to performs Thiessen with all flowlines inside NHD open water polygons
-
+        # Clip flowlines by NHD open water polygons
         arcpy.SelectLayerByLocation_management(in_layer=input_nhd_area_polys, overlap_type="INTERSECT", select_features=input_flow_lines, search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.SelectLayerByLocation_management(in_layer=input_flow_lines, overlap_type="WITHIN", select_features=input_nhd_area_polys, search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.AddMessage("Clipping upstream/downstream flowlines by NHD area polygons...")
@@ -173,8 +179,19 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.AddMessage("Clipping all flowlines by NHD area polygons...")
         arcpy.Clip_analysis(in_features=input_all_flow_lines, clip_features=input_nhd_area_polys, out_feature_class="TEST_swpt_nhdfl6mi_nhdarclip")
 
+        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_all_fl_nhdarclip",out_layer="TEST_swpt_all_fl_nhdarclip")
+        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdfl6mi_nhdarclip",out_layer="TEST_swpt_nhdfl6mi_nhdarclip")
+
+        arcpy.AddMessage("Converting vertices to points...")
+        arcpy.FeatureVerticesToPoints_management(in_features="TEST_swpt_all_fl_nhdarclip", out_feature_class="TEST_swpt_all_fl_nhdarclip_vert", point_location="ALL")
+        arcpy.FeatureVerticesToPoints_management(in_features="TEST_swpt_nhdfl6mi_nhdarclip", out_feature_class="TEST_swpt_nhdfl6mi_nhdarclip_vert", point_location="ALL")
+        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_all_fl_nhdarclip_vert",out_layer="TEST_swpt_all_fl_nhdarclip_vert")
+        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdfl6mi_nhdarclip_vert",out_layer="TEST_swpt_nhdfl6mi_nhdarclip_vert")
+        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_nhdarclip_vert", overlap_type="INTERSECT", select_features="TEST_swpt_all_fl_nhdarclip_vert", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
+        arcpy.Merge_management(inputs="TEST_swpt_all_fl_nhdarclip_vert;TEST_swpt_nhdfl6mi_nhdarclip_vert", output="TEST_swpt_vert_all")
+
         # Convert vertices from ALL flowlines inside such open water polygons and generate Thiessen Polygons
-        ## To Do
+        ## To Do - TEST HERE
 
         # Crack only such open water polygons with thiessen polygon boundaries
         ## To Do
