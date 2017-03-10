@@ -3,14 +3,15 @@
 # Purpose:
 # Author:      Research Planning, Inc.
 #
-# Created:     12/04/2016
-# Copyright:   (c) Research Planning, Inc. 2016
+# Created:     3/04/2017
+# Copyright:   (c) Research Planning, Inc. 2017
 #
 # To Do:
 # - Refactor cutline code to make shorter
 # - Compute unique polygon widths (needed?)
-# - Check for
-# -
+# - Check for any NHD polys that intersect flowlines, if not, return null
+# - Check for any NHD polys that intersect multiple DWUNIQUE flowlines, if not, skip Thiessen
+# - Add code to identify and separate NHD polys that intersect multiple DWUNIQUE flowlines and only run Thiessen routine on these to save time, then merge them back
 #
 #-------------------------------------------------------------------------------
 
