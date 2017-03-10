@@ -20,6 +20,7 @@ from arcpy import env
 
 
 def find_overlaps(input_features1, input_features2):
+    # placeholder function for finding multiple overlaps - not yet working
     for row in arcpy.da.SearchCursor(input_features, ('OID@', 'SHAPE@')):
         for row2 in arcpy.da.SearchCursor(input_features, ('OID@', 'SHAPE@')):
             if row2[1].overlaps(row[1]):
@@ -138,7 +139,6 @@ def make_perpendicular(input_lines, distance, fcname, start):
         array.removeAll()
         featureList.append(polyline)
     arcpy.CopyFeatures_management(featureList, fcname)
-
 
 
 def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dnstr_pts, input_all_flow_lines):
