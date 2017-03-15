@@ -68,7 +68,7 @@ def remove_self_intersects(input_features, intersect_points, id_field, output_fe
             for row2 in arcpy.da.SearchCursor(input_features, ('SHAPE@', str(id_field))):
                 if not row2[0].disjoint(row[0]):
                     if not row2[0].equals(row[0]) and row[1] == row2[1]:
-                        #arcpy.AddMessage( '{0} overlaps {1}'.format(str(row2[1]), str(row[1])))
+                        arcpy.AddMessage( '{0} overlaps {1}'.format(str(row2[1]), str(row[1])))
                         cutlines = row[0].cut(row2[0])
                         val = False
             if val:
@@ -177,7 +177,7 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_all_fl_filt",out_layer="TEST_swpt_all_fl_filt")
         arcpy.SelectLayerByAttribute_management(input_all_flow_lines, "CLEAR_SELECTION")
         arcpy.SelectLayerByAttribute_management(in_layer_or_view=input_all_flow_lines, selection_type="NEW_SELECTION", where_clause="FCode = 55800")
-        arcpy.CopyFeatures_management(input_flow_lines, "TEST_swpt_nhdfl6mi_filt")
+        arcpy.CopyFeatures_management(input_all_flow_lines, "TEST_swpt_nhdfl6mi_filt")
         arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdfl6mi_filt",out_layer="TEST_swpt_nhdfl6mi_filt")
 
         # Merge upstream and downstream flowline endpoints
@@ -192,25 +192,25 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.Dissolve_management(in_features=input_nhd_area_polys, out_feature_class="TEST_swpt_nhdar6mi_diss", dissolve_field="", statistics_fields="", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
         arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdar6mi_diss",out_layer="TEST_swpt_nhdar6mi_diss")
         arcpy.AddMessage("  Filling holes in NHD area polygons that intersect upstream/downstream flowlines...")
-        arcpy.EliminatePolygonPart_management(in_features="TEST_swpt_nhdar6mi_diss", out_feature_class="TEST_swpt_nhdar6mi_elim",condition="PERCENT", part_area="0 SquareMeters", part_area_percent="99.9", part_option="CONTAINED_ONLY")
+        arcpy.EliminatePolygonPart_management(in_features="TEST_swpt_nhdar6mi_diss", out_feature_class="TEST_swpt_nhdar6mi_elim",condition="AREA_AND_PERCENT", part_area="1000000 SquareMeters", part_area_percent="99.0", part_option="CONTAINED_ONLY")
 
         # Construct perpendicular cutlines for flowlines that are 1.) within open water polygons and 2.) that end at an upstream or downstream endpoint
         arcpy.SelectLayerByAttribute_management(input_flow_lines, "CLEAR_SELECTION")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="WITHIN", select_features="TEST_swpt_nhdar6mi_diss", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="BOUNDARY_TOUCHES", select_features=input_upstr_pts, search_distance="", selection_type="SUBSET_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        make_perpendicular("TEST_swpt_all_fl_filt", 1000, "TEST_swpt_cutline_upstrm", True)
+        make_perpendicular("TEST_swpt_all_fl_filt", 2000, "TEST_swpt_cutline_upstrm", True)
 
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="WITHIN", select_features="TEST_swpt_nhdar6mi_diss", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="BOUNDARY_TOUCHES", select_features=input_dnstr_pts, search_distance="", selection_type="SUBSET_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.AddMessage("  Making downstream perpendicular cutlines...")
-        make_perpendicular("TEST_swpt_all_fl_filt", 1000, "TEST_swpt_cutline_dwnstrm", False)
+        make_perpendicular("TEST_swpt_all_fl_filt", 2000, "TEST_swpt_cutline_dwnstrm", False)
         arcpy.SelectLayerByAttribute_management("TEST_swpt_all_fl_filt", "CLEAR_SELECTION")
 
 
         # Get only parts of cutlines we want
         arcpy.AddMessage("  Extracting correct portion of cutlines...")
         arcpy.Merge_management(inputs="TEST_swpt_cutline_dwnstrm;TEST_swpt_cutline_upstrm", output="TEST_swpt_cutlines_all")
-        arcpy.Clip_analysis(in_features="TEST_swpt_cutlines_all", clip_features="TEST_swpt_nhdar6mi_diss", out_feature_class="TEST_swpt_cutlines_clip")
+        arcpy.Clip_analysis(in_features="TEST_swpt_cutlines_all", clip_features="TEST_swpt_nhdar6mi_elim", out_feature_class="TEST_swpt_cutlines_clip")
         arcpy.MultipartToSinglepart_management(in_features="TEST_swpt_cutlines_clip", out_feature_class="TEST_swpt_cutlines_clip_mult")
         arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_cutlines_clip_mult",out_layer="TEST_swpt_cutlines_clip_mult")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_cutlines_clip_mult", overlap_type="INTERSECT", select_features="TEST_swpt_splitpnt_ends", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
