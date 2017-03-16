@@ -283,7 +283,7 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.AddMessage("  Merging orphaned polygons...")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_nhdfl6mi_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="SHARE_A_LINE_SEGMENT_WITH", select_features="TEST_swpt_nhdar_cut_th", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        if thiessen.lower() == 'true': # THIS OPTION PRESERVES THIESSEN POLYS WHEN IN CONFLICT
+        if str(thiessen).lower() == 'true': # THIS OPTION PRESERVES THIESSEN POLYS WHEN IN CONFLICT
             arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_splitpnt_ends", search_distance="", selection_type="REMOVE_FROM_SELECTION", invert_spatial_relationship="NOT_INVERT")
             arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th", out_feature_class="TEST_swpt_nhdar_cut_th_orphans", dissolve_field="FID_TEST_swpt_vert_all_th", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
         else: # THIS OPTION PRESERVES CUTLINE POLYS WHEN IN CONFLICT
