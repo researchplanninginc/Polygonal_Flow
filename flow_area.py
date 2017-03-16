@@ -84,13 +84,13 @@ def remove_self_intersects(input_features, intersect_points, id_field, output_fe
                         if not point[0].disjoint(cutline):
                             cursor.insertRow([cutline,row[1]])
 
-def make_perpendicular(input_lines, distance, fcname, start):
+def make_perpendicular(input_lines, distance, output_features, start):
     # Function to generate perpendicular cutlines at start or stop of polyline features, and copy to newly created feature class.
     #
     # ARGUMENTS:
     # input_lines:          Feature class or layer containing lines for which to generate perpendicular cutlines.  Presumes DWUNIQUE exists as text field
     # distance:             Distance in horizontal units of input feature class
-    # fcname:               Feature class output name
+    # output_features:               Feature class output name
     # start:                Boolean indicating whether to generate perpendicular cutline at beginning/start or end/stop point of line. True indicates beginning/start, False indicates end/stop
 
     # Setup environment and get spatial reference of input
@@ -127,13 +127,13 @@ def make_perpendicular(input_lines, distance, fcname, start):
         listofids.append(str(row[1]))
 
     # Create the feature class to store the new geometry....
-    arcpy.CreateFeatureclass_management(workspace, fcname, "POLYLINE", "","","", spatialRef)
-    arcpy.AddField_management(fcname, "DWUNIQUE", "TEXT", 50)
+    arcpy.CreateFeatureclass_management(workspace, output_features, "POLYLINE", "","","", spatialRef)
+    arcpy.AddField_management(output_features, "DWUNIQUE", "TEXT", 50)
 
     # Cursor through points, make cutlines and add features to destination feature class
     array = arcpy.Array()
     pnt = arcpy.Point()
-    with arcpy.da.InsertCursor(fcname, ['SHAPE@', 'DWUNIQUE']) as cursor:
+    with arcpy.da.InsertCursor(output_features, ['SHAPE@', 'DWUNIQUE']) as cursor:
         for pt in listofpointgeometry:
             lind = listofpointgeometry.index(pt)
             startx = pt[0][0]
