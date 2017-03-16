@@ -6,11 +6,6 @@
 # Created:     3/04/2017
 # Copyright:   (c) Research Planning, Inc. 2017
 #
-# To Do:
-# - Refactor cutline code to make shorter
-# - Handle bad Thiessen-cutline interactions
-# - Check for any NHD polys that intersect flowlines, if not, return null
-#
 #-------------------------------------------------------------------------------
 
 import os, sys, arcpy, traceback, math
@@ -62,8 +57,8 @@ def remove_self_intersects(input_features, intersect_points, id_field, output_fe
     # ARGUMENTS:
     # input_features:       Feature class or layer containing features to check for intersections
     # intersect_points:     Feature class or layer containing points to check against. Portions of intersecting features will be retained if they intersect with these points.
-    # id_field:             Atrtibute field containing ID field to check against.  Only intersecting features with same ID will be split and checked against point feature class.
-    # output_features:                Boolean indicating whether to generate perpendicular cutline at beginning/start or end/stop point of line. True indicates beginning/start, False indicates end/stop
+    # id_field:             Attribute field containing ID field to check against.  Only intersecting features with same ID will be split and checked against point feature class.
+    # output_features:      Feature class output name
 
     desc = arcpy.Describe(input_features)
     spatialRef = desc.spatialReference
