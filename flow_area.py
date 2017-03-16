@@ -90,7 +90,7 @@ def make_perpendicular(input_lines, distance, output_features, start):
     # ARGUMENTS:
     # input_lines:          Feature class or layer containing lines for which to generate perpendicular cutlines.  Presumes DWUNIQUE exists as text field
     # distance:             Distance in horizontal units of input feature class
-    # output_features:               Feature class output name
+    # output_features:      Feature class output name
     # start:                Boolean indicating whether to generate perpendicular cutline at beginning/start or end/stop point of line. True indicates beginning/start, False indicates end/stop
 
     # Setup environment and get spatial reference of input
