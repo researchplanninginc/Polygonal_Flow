@@ -333,30 +333,3 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
 if __name__ == '__main__':
     argv = tuple(arcpy.GetParameterAsText(i) for i in range(arcpy.GetArgumentCount()))
     flow_area(*argv)
-
-
-
-# perpLines = []
-# fc = "line"
-# sr = arcpy.Describe(fc).spatialReference
-# perpLineSpacing = 1000
-# perpLineLength = 1000
-# with arcpy.da.SearchCursor(fc,"SHAPE@",spatial_reference=sr) as cursor:
-#      for row in cursor:
-#          for part in row[0]: # part = a line array
-#              for i in range(len(part)):
-#                  if i==0: # first vertex
-#                      perpLineCounter = 0
-#                  else:
-#                      dy = part[i].Y - part[i-1].Y
-#                      dx = part[i].X - part[i-1].X
-#                      segmentAngle = math.degrees(math.atan2(dy,dx))
-#                      segmentLength = math.sqrt(math.pow(dy,2)+math.pow(dx,2))
-#                      linesOnSegment = int(segmentLength/perpLineSpacing)
-#                      for line in range(linesOnSegment+1):
-#                          point = row[0].positionAlongLine(perpLineCounter * perpLineSpacing)
-#                          left = arcpy.Point(point.centroid.X - (math.cos(math.radians(segmentAngle-90))*perpLineLength), point.centroid.Y - (math.sin(math.radians(segmentAngle-90))*perpLineLength))
-#                          right = arcpy.Point(point.centroid.X + (math.cos(math.radians(segmentAngle-90))*perpLineLength), point.centroid.Y + (math.sin(math.radians(segmentAngle-90))*perpLineLength))
-#                          perpLines.append(arcpy.Polyline(arcpy.Array([left,right]),sr))
-#                          perpLineCounter += 1
-#  arcpy.CopyFeatures_management(perpLines ,r'in_memory\lines')
