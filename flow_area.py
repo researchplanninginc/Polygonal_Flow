@@ -57,6 +57,14 @@ def polar_to_cart(polarcoords):
     return [x, y]
 
 def remove_self_intersects(input_features, intersect_points, id_field, output_features):
+    # Function to remove portions of features from supplied feature class that 1.) intersect, 2.) are not identical, 3.) have the same ID field, and 4.) do not overlap a supplied set of points.
+    #
+    # ARGUMENTS:
+    # input_features:       Feature class or layer containing features to check for intersections
+    # intersect_points:     Feature class or layer containing points to check against. Portions of intersecting features will be retained if they intersect with these points.
+    # id_field:             Atrtibute field containing ID field to check against.  Only intersecting features with same ID will be split and checked against point feature class.
+    # output_features:                Boolean indicating whether to generate perpendicular cutline at beginning/start or end/stop point of line. True indicates beginning/start, False indicates end/stop
+
     desc = arcpy.Describe(input_features)
     spatialRef = desc.spatialReference
     workspace = desc.path
@@ -68,7 +76,7 @@ def remove_self_intersects(input_features, intersect_points, id_field, output_fe
             for row2 in arcpy.da.SearchCursor(input_features, ('SHAPE@', str(id_field))):
                 if not row2[0].disjoint(row[0]):
                     if not row2[0].equals(row[0]) and row[1] == row2[1]:
-                        arcpy.AddMessage( '{0} overlaps {1}'.format(str(row2[1]), str(row[1])))
+                        arcpy.AddMessage( '  Cutline {0} overlaps {1}.  Splitting...'.format(str(row2[1]), str(row[1])))
                         cutlines = row[0].cut(row2[0])
                         val = False
             if val:
@@ -82,10 +90,20 @@ def remove_self_intersects(input_features, intersect_points, id_field, output_fe
                             cursor.insertRow([cutline,row[1]])
 
 def make_perpendicular(input_lines, distance, fcname, start):
-    #Get the input line features geometry as a python list.
+    # Function to generate perpendicular cutlines at start or stop of polyline features, and copy to newly created feature class.
+    #
+    # ARGUMENTS:
+    # input_lines:          Feature class or layer containing lines for which to generate perpendicular cutlines.  Presumes DWUNIQUE exists as text field
+    # distance:             Distance in horizontal units of input feature class
+    # fcname:               Feature class output name
+    # start:                Boolean indicating whether to generate perpendicular cutline at beginning/start or end/stop point of line. True indicates beginning/start, False indicates end/stop
+
+    # Setup environment and get spatial reference of input
     desc = arcpy.Describe(input_lines)
     spatialRef = desc.spatialReference
     workspace = desc.path
+
+    # Get the input line features geometry and DWUNIQUE as a python list.
     rows = arcpy.da.SearchCursor(input_lines, ('SHAPE@', 'DWUNIQUE'))
     listofpointgeometry = []
     listofids = []
@@ -111,13 +129,13 @@ def make_perpendicular(input_lines, distance, fcname, start):
             startnode = [thisrecordsgeometry[-2][0], thisrecordsgeometry[-2][1]]
             endnode = [thisrecordsgeometry[-1][0], thisrecordsgeometry[-1][1]]
         listofpointgeometry.append([startnode,endnode])
-        listofids.append(row[1])
+        listofids.append(str(row[1]))
 
-    #Create the feature class to store the new geometry....
+    # Create the feature class to store the new geometry....
     arcpy.CreateFeatureclass_management(workspace, fcname, "POLYLINE", "","","", spatialRef)
     arcpy.AddField_management(fcname, "DWUNIQUE", "TEXT", 50)
 
-    #Cursor through points, make cutlines and add features to destination feature class
+    # Cursor through points, make cutlines and add features to destination feature class
     array = arcpy.Array()
     pnt = arcpy.Point()
     with arcpy.da.InsertCursor(fcname, ['SHAPE@', 'DWUNIQUE']) as cursor:
@@ -160,9 +178,17 @@ def make_perpendicular(input_lines, distance, fcname, start):
 
 
 
-def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dnstr_pts, input_all_flow_lines):
+def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dnstr_pts, input_all_flow_lines, thiessen):
     try:
-        # Script arguments and setup workspace
+        # ARGUMENTS:
+        # input_nhd_area_polys: Feature layer containing NHD area polgyons that may contain upstream-downstream flowlines
+        # input_flow_lines:     Feature layer containing upstream-downstream flowlines that may intersect NHD area polgyons
+        # input_upstr_pts:      Feature layer containing upstream termination points for upstream-downstream flowlines that may intersect NHD area polgyons
+        # input_dnstr_pts:      Feature layer containing downstream termination points for upstream-downstream flowlines that may intersect NHD area polgyons
+        # input_all_flow_lines: Feature layer containing all flowlines (including non-upstream-downstream) that may intersect NHD area polgyons
+        # thiessen:             Boolean indicating whether to preserve thiessen-derived breaks when in conflict with cutline-derived. True preserves thiessen-derived, False preserves cutline-derived
+
+        # Setup workspace and environment
         arcpy.env.qualifiedFieldNames = False
         arcpy.env.overwriteOutput = True
         desc = arcpy.Describe(input_nhd_area_polys)
@@ -263,7 +289,12 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_nhdfl6mi_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="BOUNDARY_TOUCHES", select_features="TEST_swpt_nhdar_cut_th", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_splitpnt_ends", search_distance="", selection_type="REMOVE_FROM_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th", out_feature_class="TEST_swpt_nhdar_cut_th_orphans", dissolve_field="FID_TEST_swpt_vert_all_th", statistics_fields="", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
+        if thiessen:# THIS OPTION PRESERVES THIESSEN POLYS WHEN IN CONFLICT
+            arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_splitpnt_ends", search_distance="", selection_type="REMOVE_FROM_SELECTION", invert_spatial_relationship="NOT_INVERT")
+            arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th", out_feature_class="TEST_swpt_nhdar_cut_th_orphans", dissolve_field="FID_TEST_swpt_vert_all_th", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+        else: # THIS OPTION PRESERVES CUTLINE POLYS WHEN IN CONFLICT
+            arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th", out_feature_class="TEST_swpt_nhdar_cut_th_orphans", dissolve_field="FID_TEST_swpt_nhdar_cut", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+
         arcpy.SelectLayerByAttribute_management(in_layer_or_view="TEST_swpt_nhdar_cut_th", selection_type="SWITCH_SELECTION", where_clause="")
         arcpy.Merge_management(inputs="TEST_swpt_nhdar_cut_th;TEST_swpt_nhdar_cut_th_orphans", output="TEST_swpt_nhdar_cut_th_merged", field_mappings="")
 
@@ -308,11 +339,6 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
 if __name__ == '__main__':
     argv = tuple(arcpy.GetParameterAsText(i) for i in range(arcpy.GetArgumentCount()))
     flow_area(*argv)
-
-
-
-
-
 
 
 
