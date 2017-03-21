@@ -194,115 +194,117 @@ def flow_area(input_nhd_area_polys, input_flow_lines, input_upstr_pts, input_dns
         arcpy.AddMessage("  Filtering flowlines to extract only artificial paths...")
         arcpy.SelectLayerByAttribute_management(input_flow_lines, "CLEAR_SELECTION")
         arcpy.SelectLayerByAttribute_management(in_layer_or_view=input_flow_lines, selection_type="NEW_SELECTION", where_clause="FCode = 55800")
-        arcpy.CopyFeatures_management(input_flow_lines, "TEST_swpt_all_fl_filt")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_all_fl_filt",out_layer="TEST_swpt_all_fl_filt")
+        arcpy.CopyFeatures_management(input_flow_lines, "pf_swpt_all_fl_filt")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_all_fl_filt",out_layer="pf_swpt_all_fl_filt")
         arcpy.SelectLayerByAttribute_management(input_all_flow_lines, "CLEAR_SELECTION")
         arcpy.SelectLayerByAttribute_management(in_layer_or_view=input_all_flow_lines, selection_type="NEW_SELECTION", where_clause="FCode = 55800")
-        arcpy.CopyFeatures_management(input_all_flow_lines, "TEST_swpt_nhdfl6mi_filt")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdfl6mi_filt",out_layer="TEST_swpt_nhdfl6mi_filt")
+        arcpy.CopyFeatures_management(input_all_flow_lines, "pf_swpt_nhdfl6mi_filt")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdfl6mi_filt",out_layer="pf_swpt_nhdfl6mi_filt")
 
         # Merge upstream and downstream flowline endpoints
         arcpy.AddMessage("  Merging flowline endpoints...")
-        arcpy.Merge_management(inputs=str(input_upstr_pts)+";"+str(input_dnstr_pts), output="TEST_swpt_splitpnt_ends", field_mappings="")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_splitpnt_ends",out_layer="TEST_swpt_splitpnt_ends")
+        arcpy.Merge_management(inputs=str(input_upstr_pts)+";"+str(input_dnstr_pts), output="pf_swpt_splitpnt_ends", field_mappings="")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_splitpnt_ends",out_layer="pf_swpt_splitpnt_ends")
 
-        # Dissolve all NHD Area polygons Fill holes
+        # Dissolve all NHD Area polygons and remove islands
         arcpy.SelectLayerByAttribute_management(input_nhd_area_polys, "CLEAR_SELECTION")
-        arcpy.SelectLayerByLocation_management(in_layer=input_nhd_area_polys, overlap_type="INTERSECT", select_features="TEST_swpt_all_fl_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer=input_nhd_area_polys, overlap_type="INTERSECT", select_features="pf_swpt_all_fl_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.AddMessage("  Dissolving all NHD area polygons that intersect upstream/downstream flowlines...")
-        arcpy.Dissolve_management(in_features=input_nhd_area_polys, out_feature_class="TEST_swpt_nhdar6mi_diss", dissolve_field="", statistics_fields="", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdar6mi_diss",out_layer="TEST_swpt_nhdar6mi_diss")
+        arcpy.Dissolve_management(in_features=input_nhd_area_polys, out_feature_class="pf_swpt_nhdar6mi_diss", dissolve_field="", statistics_fields="", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdar6mi_diss",out_layer="pf_swpt_nhdar6mi_diss")
         arcpy.AddMessage("  Filling holes in NHD area polygons that intersect upstream/downstream flowlines...")
-        arcpy.EliminatePolygonPart_management(in_features="TEST_swpt_nhdar6mi_diss", out_feature_class="TEST_swpt_nhdar6mi_elim",condition="AREA_AND_PERCENT", part_area="1000000 SquareMeters", part_area_percent="99.0", part_option="CONTAINED_ONLY")
+        arcpy.EliminatePolygonPart_management(in_features="pf_swpt_nhdar6mi_diss", out_feature_class="pf_swpt_nhdar6mi_elim",condition="AREA_AND_PERCENT", part_area="1000000 SquareMeters", part_area_percent="99.0", part_option="CONTAINED_ONLY")
 
         # Construct perpendicular cutlines for flowlines that are 1.) within open water polygons and 2.) that end at an upstream or downstream endpoint
         arcpy.SelectLayerByAttribute_management(input_flow_lines, "CLEAR_SELECTION")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="WITHIN", select_features="TEST_swpt_nhdar6mi_diss", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="BOUNDARY_TOUCHES", select_features=input_upstr_pts, search_distance="", selection_type="SUBSET_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        make_perpendicular("TEST_swpt_all_fl_filt", 2000, "TEST_swpt_cutline_upstrm", True)
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_all_fl_filt", overlap_type="WITHIN", select_features="pf_swpt_nhdar6mi_diss", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_all_fl_filt", overlap_type="BOUNDARY_TOUCHES", select_features=input_upstr_pts, search_distance="", selection_type="SUBSET_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        make_perpendicular("pf_swpt_all_fl_filt", 2000, "pf_swpt_cutline_upstrm", True)
 
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="WITHIN", select_features="TEST_swpt_nhdar6mi_diss", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_all_fl_filt", overlap_type="BOUNDARY_TOUCHES", select_features=input_dnstr_pts, search_distance="", selection_type="SUBSET_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_all_fl_filt", overlap_type="WITHIN", select_features="pf_swpt_nhdar6mi_diss", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_all_fl_filt", overlap_type="BOUNDARY_TOUCHES", select_features=input_dnstr_pts, search_distance="", selection_type="SUBSET_SELECTION", invert_spatial_relationship="NOT_INVERT")
         arcpy.AddMessage("  Making downstream perpendicular cutlines...")
-        make_perpendicular("TEST_swpt_all_fl_filt", 2000, "TEST_swpt_cutline_dwnstrm", False)
-        arcpy.SelectLayerByAttribute_management("TEST_swpt_all_fl_filt", "CLEAR_SELECTION")
+        make_perpendicular("pf_swpt_all_fl_filt", 2000, "pf_swpt_cutline_dwnstrm", False)
+        arcpy.SelectLayerByAttribute_management("pf_swpt_all_fl_filt", "CLEAR_SELECTION")
 
         # Get only parts of cutlines we want
         arcpy.AddMessage("  Extracting correct portion of cutlines...")
-        arcpy.Merge_management(inputs="TEST_swpt_cutline_dwnstrm;TEST_swpt_cutline_upstrm", output="TEST_swpt_cutlines_all")
-        arcpy.Clip_analysis(in_features="TEST_swpt_cutlines_all", clip_features="TEST_swpt_nhdar6mi_elim", out_feature_class="TEST_swpt_cutlines_clip")
-        arcpy.MultipartToSinglepart_management(in_features="TEST_swpt_cutlines_clip", out_feature_class="TEST_swpt_cutlines_clip_mult")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_cutlines_clip_mult",out_layer="TEST_swpt_cutlines_clip_mult")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_cutlines_clip_mult", overlap_type="INTERSECT", select_features="TEST_swpt_splitpnt_ends", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.CopyFeatures_management("TEST_swpt_cutlines_clip_mult", "TEST_swpt_cutlines_clip_mult_ends")
+        arcpy.Merge_management(inputs="pf_swpt_cutline_dwnstrm;pf_swpt_cutline_upstrm", output="pf_swpt_cutlines_all")
+        arcpy.Clip_analysis(in_features="pf_swpt_cutlines_all", clip_features="pf_swpt_nhdar6mi_elim", out_feature_class="pf_swpt_cutlines_clip")
+        arcpy.MultipartToSinglepart_management(in_features="pf_swpt_cutlines_clip", out_feature_class="pf_swpt_cutlines_clip_mult")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_cutlines_clip_mult",out_layer="pf_swpt_cutlines_clip_mult")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_cutlines_clip_mult", overlap_type="INTERSECT", select_features="pf_swpt_splitpnt_ends", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.CopyFeatures_management("pf_swpt_cutlines_clip_mult", "pf_swpt_cutlines_clip_mult_ends")
         arcpy.AddMessage("  Deleting unneeded portions of intersecting cutlines...")
-        remove_self_intersects("TEST_swpt_cutlines_clip_mult_ends", "TEST_swpt_splitpnt_ends", "DWUNIQUE", "TEST_swpt_cutlines_filt")
+        remove_self_intersects("pf_swpt_cutlines_clip_mult_ends", "pf_swpt_splitpnt_ends", "DWUNIQUE", "pf_swpt_cutlines_filt")
 
-       # Crack NHD open water polygons with cutlines and trim
+       # Crack island-removed NHD open water polygons with cutlines and trim
         arcpy.AddMessage("  Cracking and trimming NHD area polygons with perpendicular cutlines...")
-        arcpy.FeatureToPolygon_management(in_features="TEST_swpt_nhdar6mi_diss;TEST_swpt_cutlines_filt", out_feature_class="TEST_swpt_nhdar_allcut", cluster_tolerance="", attributes="ATTRIBUTES", label_features="")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdar_allcut",out_layer="TEST_swpt_nhdar_allcut")
-        arcpy.SelectLayerByAttribute_management("TEST_swpt_all_fl_filt", "CLEAR_SELECTION")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_allcut", overlap_type="CROSSED_BY_THE_OUTLINE_OF", select_features="TEST_swpt_all_fl_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_allcut", overlap_type="CONTAINS", select_features="TEST_swpt_all_fl_filt", search_distance="", selection_type="ADD_TO_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.CopyFeatures_management("TEST_swpt_nhdar_allcut", "TEST_swpt_nhdar_cut")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdar_cut",out_layer="TEST_swpt_nhdar_cut")
+        arcpy.FeatureToPolygon_management(in_features="pf_swpt_nhdar6mi_elim;pf_swpt_cutlines_filt", out_feature_class="pf_swpt_nhdar_allcut", cluster_tolerance="", attributes="ATTRIBUTES", label_features="")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdar_allcut",out_layer="pf_swpt_nhdar_allcut")
+        arcpy.SelectLayerByAttribute_management("pf_swpt_all_fl_filt", "CLEAR_SELECTION")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdar_allcut", overlap_type="CROSSED_BY_THE_OUTLINE_OF", select_features="pf_swpt_all_fl_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdar_allcut", overlap_type="CONTAINS", select_features="pf_swpt_all_fl_filt", search_distance="", selection_type="ADD_TO_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.CopyFeatures_management("pf_swpt_nhdar_allcut", "pf_swpt_nhdar_cut")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdar_cut",out_layer="pf_swpt_nhdar_cut")
 
         # Clip flowlines by NHD open water polygons
         arcpy.AddMessage("  Clipping upstream/downstream flowlines by NHD area polygons...")
-        arcpy.Clip_analysis(in_features="TEST_swpt_all_fl_filt", clip_features="TEST_swpt_nhdar_cut", out_feature_class="TEST_swpt_all_fl_filt_nhdarclip")
+        arcpy.Clip_analysis(in_features="pf_swpt_all_fl_filt", clip_features="pf_swpt_nhdar_cut", out_feature_class="pf_swpt_all_fl_filt_nhdarclip")
         arcpy.AddMessage("  Clipping all flowlines by NHD area polygons...")
-        arcpy.Clip_analysis(in_features="TEST_swpt_nhdfl6mi_filt", clip_features="TEST_swpt_nhdar_cut", out_feature_class="TEST_swpt_nhdfl6mi_nhdarclip")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_all_fl_filt_nhdarclip",out_layer="TEST_swpt_all_fl_filt_nhdarclip")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdfl6mi_nhdarclip",out_layer="TEST_swpt_nhdfl6mi_nhdarclip")
+        arcpy.Clip_analysis(in_features="pf_swpt_nhdfl6mi_filt", clip_features="pf_swpt_nhdar_cut", out_feature_class="pf_swpt_nhdfl6mi_nhdarclip")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_all_fl_filt_nhdarclip",out_layer="pf_swpt_all_fl_filt_nhdarclip")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdfl6mi_nhdarclip",out_layer="pf_swpt_nhdfl6mi_nhdarclip")
 
         # Convert vertices from ALL flowlines inside such open water polygons, merge, and discard duplicated vertices from non-upstream-downstream flowlines, if present
         arcpy.AddMessage("  Densifying flowlines...")
-        arcpy.Densify_edit(in_features="TEST_swpt_all_fl_filt_nhdarclip", densification_method="DISTANCE", distance="10 Meters", max_deviation="0.1 Meters", max_angle="10")
+        arcpy.Densify_edit(in_features="pf_swpt_all_fl_filt_nhdarclip", densification_method="DISTANCE", distance="10 Meters", max_deviation="0.1 Meters", max_angle="10")
+        arcpy.Densify_edit(in_features="pf_swpt_nhdfl6mi_nhdarclip", densification_method="DISTANCE", distance="10 Meters", max_deviation="0.1 Meters", max_angle="10")
         arcpy.AddMessage("  Converting vertices to points...")
-        arcpy.FeatureVerticesToPoints_management(in_features="TEST_swpt_all_fl_filt_nhdarclip", out_feature_class="TEST_swpt_all_fl_nhdarclip_vert", point_location="ALL")
-        arcpy.FeatureVerticesToPoints_management(in_features="TEST_swpt_nhdfl6mi_nhdarclip", out_feature_class="TEST_swpt_nhdfl6mi_nhdarclip_vert", point_location="ALL")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_all_fl_nhdarclip_vert",out_layer="TEST_swpt_all_fl_nhdarclip_vert")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdfl6mi_nhdarclip_vert",out_layer="TEST_swpt_nhdfl6mi_nhdarclip_vert")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdfl6mi_nhdarclip_vert", overlap_type="INTERSECT", select_features="TEST_swpt_all_fl_nhdarclip_vert", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
-        arcpy.Merge_management(inputs="TEST_swpt_all_fl_nhdarclip_vert;TEST_swpt_nhdfl6mi_nhdarclip_vert", output="TEST_swpt_vert_all")
+        arcpy.FeatureVerticesToPoints_management(in_features="pf_swpt_all_fl_filt_nhdarclip", out_feature_class="pf_swpt_all_fl_nhdarclip_vert", point_location="ALL")
+        arcpy.FeatureVerticesToPoints_management(in_features="pf_swpt_nhdfl6mi_nhdarclip", out_feature_class="pf_swpt_nhdfl6mi_nhdarclip_vert", point_location="ALL")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_all_fl_nhdarclip_vert",out_layer="pf_swpt_all_fl_nhdarclip_vert")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdfl6mi_nhdarclip_vert",out_layer="pf_swpt_nhdfl6mi_nhdarclip_vert")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdfl6mi_nhdarclip_vert", overlap_type="INTERSECT", select_features="pf_swpt_all_fl_nhdarclip_vert", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
+        arcpy.Merge_management(inputs="pf_swpt_all_fl_nhdarclip_vert;pf_swpt_nhdfl6mi_nhdarclip_vert", output="pf_swpt_vert_all")
 
         # Generate Thiessen polygons
         arcpy.AddMessage("  Generating Thiessen polygons...")
-        arcpy.env.extent = arcpy.Describe("TEST_swpt_nhdar_cut").extent
-        arcpy.CreateThiessenPolygons_analysis(in_features="TEST_swpt_vert_all", out_feature_class="TEST_swpt_vert_all_th", fields_to_copy="ONLY_FID")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_vert_all_th",out_layer="TEST_swpt_vert_all_th")
+        arcpy.env.extent = arcpy.Describe("pf_swpt_nhdar_cut").extent
+        arcpy.CreateThiessenPolygons_analysis(in_features="pf_swpt_vert_all", out_feature_class="pf_swpt_vert_all_th", fields_to_copy="ONLY_FID")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_vert_all_th",out_layer="pf_swpt_vert_all_th")
         arcpy.env.extent = "MAXOF"
 
         # Crack open water polygons with thiessen polygon boundaries
         arcpy.AddMessage("  Cracking NHD area polygons with Thiessen polygons...")
-        arcpy.Identity_analysis(in_features="TEST_swpt_nhdar_cut", identity_features="TEST_swpt_vert_all_th", out_feature_class="TEST_swpt_nhdar_cut_th", join_attributes="ONLY_FID", cluster_tolerance="", relationship="NO_RELATIONSHIPS")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdar_cut_th",out_layer="TEST_swpt_nhdar_cut_th")
+        arcpy.Identity_analysis(in_features="pf_swpt_nhdar_cut", identity_features="pf_swpt_vert_all_th", out_feature_class="pf_swpt_nhdar_cut_th", join_attributes="ONLY_FID", cluster_tolerance="", relationship="NO_RELATIONSHIPS")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdar_cut_th",out_layer="pf_swpt_nhdar_cut_th")
 
         # Check for and merge orphaned polygons that no longer intersect a flowline
         arcpy.AddMessage("  Merging orphaned polygons...")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_nhdfl6mi_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="SHARE_A_LINE_SEGMENT_WITH", select_features="TEST_swpt_nhdar_cut_th", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="pf_swpt_nhdfl6mi_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="INVERT")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdar_cut_th", overlap_type="SHARE_A_LINE_SEGMENT_WITH", select_features="pf_swpt_nhdar_cut_th", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
         if str(thiessen).lower() == 'true': # THIS OPTION PRESERVES THIESSEN POLYS WHEN IN CONFLICT
-            arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="TEST_swpt_splitpnt_ends", search_distance="", selection_type="REMOVE_FROM_SELECTION", invert_spatial_relationship="NOT_INVERT")
-            arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th", out_feature_class="TEST_swpt_nhdar_cut_th_orphans", dissolve_field="FID_TEST_swpt_vert_all_th", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+            arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdar_cut_th", overlap_type="INTERSECT", select_features="pf_swpt_splitpnt_ends", search_distance="", selection_type="REMOVE_FROM_SELECTION", invert_spatial_relationship="NOT_INVERT")
+            arcpy.Dissolve_management(in_features="pf_swpt_nhdar_cut_th", out_feature_class="pf_swpt_nhdar_cut_th_orphans", dissolve_field="FID_pf_swpt_vert_all_th", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
         else: # THIS OPTION PRESERVES CUTLINE POLYS WHEN IN CONFLICT
-            arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th", out_feature_class="TEST_swpt_nhdar_cut_th_orphans", dissolve_field="FID_TEST_swpt_nhdar_cut", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+            arcpy.Dissolve_management(in_features="pf_swpt_nhdar_cut_th", out_feature_class="pf_swpt_nhdar_cut_th_orphans", dissolve_field="FID_pf_swpt_nhdar_cut", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
 
-        arcpy.SelectLayerByAttribute_management(in_layer_or_view="TEST_swpt_nhdar_cut_th", selection_type="SWITCH_SELECTION", where_clause="")
-        arcpy.Merge_management(inputs="TEST_swpt_nhdar_cut_th;TEST_swpt_nhdar_cut_th_orphans", output="TEST_swpt_nhdar_cut_th_merged", field_mappings="")
+        arcpy.SelectLayerByAttribute_management(in_layer_or_view="pf_swpt_nhdar_cut_th", selection_type="SWITCH_SELECTION", where_clause="")
+        arcpy.Merge_management(inputs="pf_swpt_nhdar_cut_th;pf_swpt_nhdar_cut_th_orphans", output="pf_swpt_nhdar_cut_th_merged", field_mappings="")
 
         # Spatial join (one-to-many) flowlines to merged open water polygons
         arcpy.AddMessage("  Joining cracked NHD area polygons to upstream/downstream flowlines...")
-        arcpy.SelectLayerByAttribute_management("TEST_swpt_all_fl_filt", "CLEAR_SELECTION")
-        arcpy.SpatialJoin_analysis(target_features="TEST_swpt_nhdar_cut_th_merged", join_features="TEST_swpt_all_fl_filt", out_feature_class="TEST_swpt_nhdar_cut_th_merged_join", join_operation="JOIN_ONE_TO_MANY", join_type="KEEP_COMMON", match_option="CROSSED_BY_THE_OUTLINE_OF", search_radius="", distance_field_name="")
+        arcpy.SelectLayerByAttribute_management("pf_swpt_all_fl_filt", "CLEAR_SELECTION")
+        arcpy.SpatialJoin_analysis(target_features="pf_swpt_nhdar_cut_th_merged", join_features="pf_swpt_all_fl_filt", out_feature_class="pf_swpt_nhdar_cut_th_merged_join", join_operation="JOIN_ONE_TO_MANY", join_type="KEEP_COMMON", match_option="CROSSED_BY_THE_OUTLINE_OF", search_radius="", distance_field_name="")
 
-        # Dissolve on DWUNIQUE
-        arcpy.AddMessage("  Dissolving cracked NHD area polygons by DWUNIQUE to make final output...")
-        arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th_merged_join", out_feature_class="TEST_swpt_nhdar_cut_th_merged_join_diss", dissolve_field="DWUNIQUE", statistics_fields="", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
-        arcpy.MakeFeatureLayer_management(in_features="TEST_swpt_nhdar_cut_th_merged_join_diss",out_layer="TEST_swpt_nhdar_cut_th_merged_join_diss")
-        arcpy.SelectLayerByLocation_management(in_layer="TEST_swpt_nhdar_cut_th_merged_join_diss", overlap_type="INTERSECT", select_features="TEST_swpt_all_fl_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-        arcpy.Dissolve_management(in_features="TEST_swpt_nhdar_cut_th_merged_join_diss", out_feature_class="TEST_OUTPUT_swpt_nhdar_all_fl", dissolve_field="DWUNIQUE", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+        # Dissolve on DWUNIQUE and clip using dissolved NHD open water polygons
+        arcpy.AddMessage("  Dissolving cracked NHD area polygons by DWUNIQUE and clipping to make final output...")
+        arcpy.Dissolve_management(in_features="pf_swpt_nhdar_cut_th_merged_join", out_feature_class="pf_swpt_nhdar_cut_th_merged_join_diss", dissolve_field="DWUNIQUE", statistics_fields="", multi_part="SINGLE_PART", unsplit_lines="DISSOLVE_LINES")
+        arcpy.MakeFeatureLayer_management(in_features="pf_swpt_nhdar_cut_th_merged_join_diss",out_layer="pf_swpt_nhdar_cut_th_merged_join_diss")
+        arcpy.SelectLayerByLocation_management(in_layer="pf_swpt_nhdar_cut_th_merged_join_diss", overlap_type="INTERSECT", select_features="pf_swpt_all_fl_filt", search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
+        arcpy.Dissolve_management(in_features="pf_swpt_nhdar_cut_th_merged_join_diss", out_feature_class="pf_swpt_nhdar_all_fl", dissolve_field="DWUNIQUE", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+        arcpy.Clip_analysis(in_features="pf_swpt_nhdar_all_fl", clip_features="pf_swpt_nhdar6mi_diss", out_feature_class="pf_swpt_nhdar_all_fl_clip", cluster_tolerance="")
 
         pass
 
